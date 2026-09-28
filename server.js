@@ -27,6 +27,10 @@ const noteSchema = new mongoose.Schema({
   body: {
     type: String,
     default: ""
+  },
+  createdAt: {
+    type: Date,
+    default: Date.now
   }
 });
 
@@ -84,6 +88,7 @@ app.post(
     }
   }
 );
+
 app.put(
   "/api/notes/:id",
   body("title")
@@ -92,37 +97,61 @@ app.put(
     .withMessage("Title is required")
     .isLength({ min: 3 })
     .withMessage("Title must be at least 3 characters long"),
+
   async (req, res) => {
-    const errors = validationResult(req);
+    try {
+      const errors = validationResult(req);
 
-    if (!errors.isEmpty()) {
-      return res.status(400).json({ errors: errors.array() });
+      if (!errors.isEmpty()) {
+        return res.status(400).json({
+          errors: errors.array()
+        });
+      }
+
+      const { title, body } = req.body || {};
+
+      const note = await Note.findByIdAndUpdate(
+        req.params.id,
+        { title, body },
+        {
+          new: true,
+          runValidators: true
+        }
+      );
+
+      if (!note) {
+        return res.status(404).json({
+          error: "Note not found"
+        });
+      }
+
+      res.json(note);
+
+    } catch (err) {
+      res.status(400).json({
+        error: "Invalid note ID"
+      });
     }
-
-    const { title, body } = req.body || {};
-
-    const note = await Note.findByIdAndUpdate(
-      req.params.id,
-      { title, body },
-      { new: true, runValidators: true }
-    );
-
-    if (!note) {
-      return res.status(404).json({ error: "Note not found" });
-    }
-
-    res.json(note);
   }
 );
 
 app.delete("/api/notes/:id", async (req, res) => {
-  const note = await Note.findByIdAndDelete(req.params.id);
+  try {
+    const note = await Note.findByIdAndDelete(req.params.id);
 
-  if (!note) {
-    return res.status(404).json({ error: "Note not found" });
+    if (!note) {
+      return res.status(404).json({
+        error: "Note not found"
+      });
+    }
+
+    res.status(204).send();
+
+  } catch (err) {
+    res.status(400).json({
+      error: "Invalid note ID"
+    });
   }
-
-  res.status(204).send();
 });
 
 app.listen(3000, () => {
