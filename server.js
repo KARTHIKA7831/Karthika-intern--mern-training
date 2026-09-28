@@ -28,8 +28,7 @@ const noteSchema = new mongoose.Schema({
     type: String,
     default: ""
   },
-
-createdAt: {
+  createdAt: {
     type: Date,
     default: Date.now
   }
@@ -89,6 +88,7 @@ app.post(
     }
   }
 );
+
 app.put(
   "/api/notes/:id",
   body("title")
