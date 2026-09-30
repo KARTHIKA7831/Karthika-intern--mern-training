@@ -7,7 +7,7 @@ Notes Frontend
 
 A React and Vite frontend application for managing notes.
 
-Features
+Features:
 
 Create notes
 
