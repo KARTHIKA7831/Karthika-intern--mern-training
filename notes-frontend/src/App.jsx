@@ -18,6 +18,10 @@ function App() {
 
   const handleSubmit = (e) => {
     e.preventDefault()
+if (!title.trim() || !body.trim()) {
+  alert("Please enter both title and body")
+  return
+}
 
     if (editingId) {
       fetch(`http://localhost:3000/api/notes/${editingId}`, {
