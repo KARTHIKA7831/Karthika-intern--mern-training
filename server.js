@@ -2,11 +2,16 @@ require("dotenv").config();
 
 const express = require("express");
 const mongoose = require("mongoose");
+const cors = require("cors");
+const bcrypt = require("bcrypt");
 const { body, validationResult } = require("express-validator");
+const User = require("./models/User");
 
 const app = express();
 
 app.use(express.json());
+app.use(cors());
+
 
 mongoose
   .connect(process.env.MONGO_URI)
@@ -52,6 +57,94 @@ app.get("/api/notes", async (req, res) => {
     res.status(500).json({ error: err.message });
   }
 });
+
+app.post(
+  "/api/auth/signup",
+
+  body("name")
+    .trim()
+    .notEmpty()
+    .withMessage("Name is required"),
+
+    body("email")
+  .trim()
+  .isEmail()
+  .withMessage("Valid email is required")
+  .normalizeEmail(),
+
+  body("password")
+  .isLength({ min: 6 })
+  .withMessage("Password must be at least 6 characters long"),
+  
+ async (req, res) => {
+  const errors = validationResult(req);
+if (!errors.isEmpty()) {
+  return res.status(400).json({
+    errors: errors.array()
+  });
+}
+
+  try {
+
+    const { name, email, password } = req.body;
+
+    const existingUser = await User.findOne({ email });
+
+    if (existingUser) {
+      return res.status(409).json({
+        error: "Email already registered"
+      });
+    }
+
+    const passwordHash = await bcrypt.hash(password, 10);
+
+    const user = await User.create({
+      name,
+      email,
+      passwordHash
+    });
+
+    res.status(201).json({
+      message: "Signup successful"
+    });
+
+  }catch (err) {
+    res.status(500).json({
+      error: "Something went wrong"
+    });
+   }
+  });
+
+  app.post("/api/auth/login", async (req, res) => {
+  const { email, password } = req.body;
+  try {
+const user = await User.findOne({ email });
+if (!user) {
+  return res.status(401).json({
+    error: "Invalid email or password"
+  });
+}
+const isPasswordCorrect = await bcrypt.compare(
+    password,
+    user.passwordHash
+  );
+  if (!isPasswordCorrect) {
+  return res.status(401).json({
+    error: "Invalid email or password"
+  });
+}
+res.status(200).json({
+  message: "Login successful"
+});
+} catch (err) {
+
+    res.status(500).json({
+      error: "Something went wrong"
+    });
+
+  }
+});
+
 
 app.post(
   "/api/notes",
