@@ -36,6 +36,12 @@ const noteSchema = new mongoose.Schema({
     type: String,
     default: ""
   },
+  user: {
+  type: mongoose.Schema.Types.ObjectId,
+  ref: "User",
+  required: true
+},
+
   createdAt: {
     type: Date,
     default: Date.now
@@ -54,7 +60,10 @@ app.get("/hello", (req, res) => {
 
 app.get("/api/notes",authMiddleware, async (req, res) => {
   try {
-    const notes = await Note.find();
+    const notes = await Note.find({
+  user: req.user.userId
+}).populate("user");
+
     res.json(notes);
   } catch (err) {
     res.status(500).json({ error: err.message });
@@ -181,7 +190,8 @@ app.post(
 
       const note = await Note.create({
         title,
-        body
+        body,
+        user: req.user.userId
       });
 
       res.status(201).json(note);
@@ -216,8 +226,11 @@ app.put(
 
       const { title, body } = req.body || {};
 
-      const note = await Note.findByIdAndUpdate(
-        req.params.id,
+      const note = await Note.findOneAndUpdate(
+        {
+    _id: req.params.id,
+    user: req.user.userId
+  },
         { title, body },
         {
           new: true,
@@ -243,7 +256,11 @@ app.put(
 
 app.delete("/api/notes/:id", authMiddleware, async (req, res) => {
   try {
-    const note = await Note.findByIdAndDelete(req.params.id);
+    const note = await Note.findOneAndDelete({
+  _id: req.params.id,
+  user: req.user.userId
+});
+
 
     if (!note) {
       return res.status(404).json({
