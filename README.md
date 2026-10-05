@@ -44,6 +44,46 @@ How to Run Frontend cd notes-frontend npm install npm run dev
 
 Backend cd hello-world-api npm install npm run dev
 
+JWT Authentication
+
+Added JWT-based authentication to protect the Notes API.
+
+Authentication Flow
+
+User logs in with email and password.
+
+Server verifies the password using bcrypt.
+
+Server generates a JWT containing the user ID.
+
+JWT is returned after successful login.
+
+Client sends the JWT in the Authorization header.
+
+Auth middleware verifies the JWT.
+
+Valid user information is attached to req.user.
+
+The request continues to the protected route.
+
+Protected Routes
+
+GET /api/notes
+
+POST /api/notes
+
+PUT /api/notes/:id
+
+DELETE /api/notes/:id
+
+Testing
+
+No token → 401 Unauthorized
+
+Invalid token → 401 Unauthorized
+
+Valid token → 200 OK
+
 Purpose
 
 This repository is used to track my MERN stack training progress and projects.
