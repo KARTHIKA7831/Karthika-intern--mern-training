@@ -4,8 +4,11 @@ const express = require("express");
 const mongoose = require("mongoose");
 const cors = require("cors");
 const bcrypt = require("bcrypt");
+const jwt = require("jsonwebtoken");
 const { body, validationResult } = require("express-validator");
 const User = require("./models/User");
+const authMiddleware = require("./middleware/auth");
+
 
 const app = express();
 
@@ -49,7 +52,7 @@ app.get("/hello", (req, res) => {
   res.json({ message: "Hello World" });
 });
 
-app.get("/api/notes", async (req, res) => {
+app.get("/api/notes",authMiddleware, async (req, res) => {
   try {
     const notes = await Note.find();
     res.json(notes);
@@ -133,9 +136,17 @@ const isPasswordCorrect = await bcrypt.compare(
     error: "Invalid email or password"
   });
 }
+const token = jwt.sign(
+  { userId: user._id },
+  process.env.JWT_SECRET,
+  { expiresIn: "1h" }
+);
+
 res.status(200).json({
-  message: "Login successful"
+  message: "Login successful",
+  token
 });
+
 } catch (err) {
 
     res.status(500).json({
@@ -148,6 +159,7 @@ res.status(200).json({
 
 app.post(
   "/api/notes",
+  authMiddleware,
   body("title")
     .trim()
     .notEmpty()
@@ -184,6 +196,7 @@ app.post(
 
 app.put(
   "/api/notes/:id",
+  authMiddleware,
   body("title")
     .trim()
     .notEmpty()
@@ -228,7 +241,7 @@ app.put(
   }
 );
 
-app.delete("/api/notes/:id", async (req, res) => {
+app.delete("/api/notes/:id", authMiddleware, async (req, res) => {
   try {
     const note = await Note.findByIdAndDelete(req.params.id);
 
