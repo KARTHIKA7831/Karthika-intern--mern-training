@@ -1,4 +1,6 @@
 import { useState, useEffect } from "react"
+import api from "../api/axios"
+import { toast } from "react-toastify"
 
 function Dashboard() {
   const [notes, setNotes] = useState([])
@@ -7,48 +9,41 @@ function Dashboard() {
   const [body, setBody] = useState("")
   const [editingId, setEditingId] = useState(null)
 
- useEffect(() => {
-  const token = localStorage.getItem("token")
+  useEffect(() => {
+    const token = localStorage.getItem("token")
 
-  console.log("TOKEN:", token)
+    console.log("TOKEN:", token)
 
-  fetch("http://localhost:3000/api/notes", {
-    headers: {
-      Authorization: `Bearer ${token}`
-    }
-  })
-    .then(response => {
-      console.log("STATUS:", response.status)
-      return response.json()
-    })
-    .then(data => {
-      console.log("NOTES RESPONSE:", data)
-      setNotes(data)
-      setLoading(false)
-    })
-}, [])
+    api.get("/notes")
+      .then(response => {
+        console.log("STATUS:", response.status)
+        console.log("NOTES RESPONSE:", response.data)
+
+        setNotes(response.data)
+        setLoading(false)
+      })
+      .catch(error => {
+        console.log(error)
+        setLoading(false)
+      })
+  }, [])
 
   const handleSubmit = (e) => {
     e.preventDefault()
-if (!title.trim() || !body.trim()) {
-  alert("Please enter both title and body")
-  return
-}
+
+    if (!title.trim() || !body.trim()) {
+      toast.error("Please enter both title and body")
+      return
+    }
 
     if (editingId) {
-      fetch(`http://localhost:3000/api/notes/${editingId}`, {
-        method: "PUT",
-        headers: {
-  "Content-Type": "application/json",
-  Authorization: `Bearer ${localStorage.getItem("token")}`
-},
-        body: JSON.stringify({
-          title: title,
-          body: body
-        })
+      api.put(`/notes/${editingId}`, {
+        title: title,
+        body: body
       })
-        .then(response => response.json())
-        .then(data => {
+        .then(response => {
+          const data = response.data
+
           setNotes(
             notes.map(note =>
               note._id === data._id ? data : note
@@ -63,28 +58,23 @@ if (!title.trim() || !body.trim()) {
       return
     }
 
-    fetch("http://localhost:3000/api/notes", {
-      method: "POST",
-      headers: {
-    "Content-Type": "application/json",
-    Authorization: `Bearer ${localStorage.getItem("token")}`
-  },
-      body: JSON.stringify({
-        title: title,
-        body: body
-      })
+    api.post("/notes", {
+      title: title,
+      body: body
     })
-      .then(response => response.json())
-      .then(data => {
+      .then(response => {
+        const data = response.data
+
         setNotes([...notes, data])
         setTitle("")
         setBody("")
       })
   }
+
   const handleLogout = () => {
-  localStorage.removeItem("token")
-  window.location.href = "/login"
-}
+    localStorage.removeItem("token")
+    window.location.href = "/login"
+  }
 
   const handleDelete = (id) => {
     const confirmed = window.confirm(
@@ -93,12 +83,7 @@ if (!title.trim() || !body.trim()) {
 
     if (!confirmed) return
 
-    fetch(`http://localhost:3000/api/notes/${id}`, {
-  method: "DELETE",
-  headers: {
-    Authorization: `Bearer ${localStorage.getItem("token")}`
-  }
-})
+    api.delete(`/notes/${id}`)
       .then(() => {
         setNotes(notes.filter(note => note._id !== id))
       })
@@ -107,7 +92,6 @@ if (!title.trim() || !body.trim()) {
   return (
     <div>
       <h1>My Notes</h1>
-     
 
       <form onSubmit={handleSubmit}>
         <input
@@ -150,7 +134,10 @@ if (!title.trim() || !body.trim()) {
           </button>
         </div>
       ))}
-       <button onClick={handleLogout}>Logout</button>
+
+      <button onClick={handleLogout}>
+        Logout
+      </button>
     </div>
   )
 }
