@@ -58,13 +58,38 @@ app.get("/hello", (req, res) => {
   res.json({ message: "Hello World" });
 });
 
-app.get("/api/notes",authMiddleware, async (req, res) => {
+app.get("/api/notes", authMiddleware, async (req, res) => {
   try {
+    const { page, limit, search } = req.query;
+    const skip = (page - 1) * limit;
+    const total = await Note.countDocuments({
+      user: req.user.userId,
+      $or: [
+    { title: { $regex: search, $options: "i" } },
+    { body: { $regex: search, $options: "i" } }
+  ]
+    });
+    const totalPages = Math.ceil(total / limit);
     const notes = await Note.find({
-  user: req.user.userId
-}).populate("user");
+  user: req.user.userId,
+  $or: [
+    { title: { $regex: search, $options: "i" } },
+    { body: { $regex: search, $options: "i" } }
+  ]
+})
+.populate("user")
+.skip(skip)
+      .limit(limit);
 
-    res.json(notes);
+res.json({
+  notes,
+  metadata: {
+    page,
+    limit,
+    total,
+    totalPages
+  }
+});
   } catch (err) {
     res.status(500).json({ error: err.message });
   }

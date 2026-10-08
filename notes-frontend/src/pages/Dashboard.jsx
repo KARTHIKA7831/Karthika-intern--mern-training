@@ -8,25 +8,39 @@ function Dashboard() {
   const [title, setTitle] = useState("")
   const [body, setBody] = useState("")
   const [editingId, setEditingId] = useState(null)
+    const [page, setPage] = useState(1)
+    const [search, setSearch] = useState("")
+const [totalPages, setTotalPages] = useState(1)
 
   useEffect(() => {
+    const timer = setTimeout(() => {
     const token = localStorage.getItem("token")
 
     console.log("TOKEN:", token)
+    console.log("API CALL:", {
+    page,
+    limit: 10,
+    search
+  })
 
-    api.get("/notes")
+    api.get(`/notes?page=${page}&limit=10&search=${search}`)
       .then(response => {
         console.log("STATUS:", response.status)
         console.log("NOTES RESPONSE:", response.data)
+        console.log("TOTAL PAGES:", response.data.metadata.totalPages)
 
-        setNotes(response.data)
+        setNotes(response.data.notes)
+        setTotalPages(response.data.metadata.totalPages)
         setLoading(false)
       })
       .catch(error => {
         console.log(error)
         setLoading(false)
       })
-  }, [])
+      }, 500)
+
+  return () => clearTimeout(timer)
+  }, [page, search])
 
   const handleSubmit = (e) => {
     e.preventDefault()
@@ -92,7 +106,15 @@ function Dashboard() {
   return (
     <div>
       <h1>My Notes</h1>
-
+    <input
+  type="text"
+  placeholder="Search notes..."
+  value={search}
+  onChange={(e) => {
+    setSearch(e.target.value)
+    setPage(1)
+  }}
+/>
       <form onSubmit={handleSubmit}>
         <input
           type="text"
@@ -134,7 +156,21 @@ function Dashboard() {
           </button>
         </div>
       ))}
+<div>
+  <button onClick={() => setPage(page - 1)}
+    disabled={page === 1}>
+    Previous
+  </button>
 
+  <span> Page {page} </span>
+
+  <button
+  onClick={() => setPage(page + 1)}
+  disabled={page === totalPages}
+>
+  Next
+</button>
+</div>
       <button onClick={handleLogout}>
         Logout
       </button>
