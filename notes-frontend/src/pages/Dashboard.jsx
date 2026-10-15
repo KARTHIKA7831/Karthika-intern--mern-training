@@ -11,6 +11,7 @@ function Dashboard() {
     const [page, setPage] = useState(1)
     const [search, setSearch] = useState("")
 const [totalPages, setTotalPages] = useState(1)
+const [favorite, setFavorite] = useState("all")
 
   useEffect(() => {
     const timer = setTimeout(() => {
@@ -23,7 +24,14 @@ const [totalPages, setTotalPages] = useState(1)
     search
   })
 
-    api.get(`/notes?page=${page}&limit=10&search=${search}`)
+    api.get("/notes", {
+  params: {
+    page,
+    limit: 10,
+    search,
+    ...(favorite !== "all" && { favorite })
+  }
+})
       .then(response => {
         console.log("STATUS:", response.status)
         console.log("NOTES RESPONSE:", response.data)
@@ -40,7 +48,7 @@ const [totalPages, setTotalPages] = useState(1)
       }, 500)
 
   return () => clearTimeout(timer)
-  }, [page, search])
+  }, [page, search, favorite])
 
   const handleSubmit = (e) => {
     e.preventDefault()
@@ -103,6 +111,29 @@ const [totalPages, setTotalPages] = useState(1)
       })
   }
 
+  const handleFavorite = (note) => {
+  api.patch(`/notes/${note._id}/favorite`, {
+    isFavorite: !note.isFavorite
+  })
+    .then(response => {
+      const updatedNote = response.data;
+
+      setNotes(prevNotes =>
+        prevNotes.map(item =>
+          item._id === updatedNote._id
+            ? updatedNote
+            : item
+        )
+      );
+
+      toast.success("Favorite updated");
+    })
+    .catch(error => {
+      console.log(error);
+      toast.error("Failed to update favorite");
+    });
+};
+
   return (
     <div>
       <h1>My Notes</h1>
@@ -114,7 +145,19 @@ const [totalPages, setTotalPages] = useState(1)
     setSearch(e.target.value)
     setPage(1)
   }}
-/>
+  />
+  <select
+  value={favorite}
+  onChange={(e) => {
+    setFavorite(e.target.value)
+    setPage(1)
+  }}
+>
+  <option value="all">All Notes</option>
+  <option value="true">Favorites</option>
+  <option value="false">Not Favorites</option>
+</select>
+
       <form onSubmit={handleSubmit}>
         <input
           type="text"
@@ -140,6 +183,9 @@ const [totalPages, setTotalPages] = useState(1)
         <div key={note._id}>
           <h2>{note.title}</h2>
           <p>{note.body}</p>
+          <button onClick={() => handleFavorite(note)}>
+  {note.isFavorite ? "⭐ Favorited" : "☆ Add Favorite"}
+</button> 
 
           <button
             onClick={() => {
