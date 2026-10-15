@@ -73,15 +73,25 @@ app.get("/api/notes", authMiddleware, async (req, res) => {
     const skip = (page - 1) * limit;
     const filter = {
   user: req.user.userId,
-  $or: [
-    { title: { $regex: search, $options: "i" } },
-    { body: { $regex: search, $options: "i" } }
+  $and: [
+    {
+      $or: [
+        { title: { $regex: search, $options: "i" } },
+        { body: { $regex: search, $options: "i" } }
+      ]
+    }
   ]
 };
+
 if (favorite === "true") {
-  filter.isFavorite = true;
+  filter.$and.push({ isFavorite: true });
 } else if (favorite === "false") {
-  filter.isFavorite = false;
+  filter.$and.push({
+    $or: [
+      { isFavorite: false },
+      { isFavorite: { $exists: false } }
+    ]
+  });
 }
     const total = await Note.countDocuments(filter);
 
