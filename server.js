@@ -41,6 +41,10 @@ const noteSchema = new mongoose.Schema({
   ref: "User",
   required: true
 },
+isFavorite: {
+  type: Boolean,
+  default: false
+},
 
   createdAt: {
     type: Date,
@@ -60,26 +64,32 @@ app.get("/hello", (req, res) => {
 
 app.get("/api/notes", authMiddleware, async (req, res) => {
   try {
-    const { page, limit, search } = req.query;
+  const {
+  page = 1,
+  limit = 10,
+  search = "",
+  favorite
+} = req.query;
     const skip = (page - 1) * limit;
-    const total = await Note.countDocuments({
-      user: req.user.userId,
-      $or: [
-    { title: { $regex: search, $options: "i" } },
-    { body: { $regex: search, $options: "i" } }
-  ]
-    });
-    const totalPages = Math.ceil(total / limit);
-    const notes = await Note.find({
+    const filter = {
   user: req.user.userId,
   $or: [
     { title: { $regex: search, $options: "i" } },
     { body: { $regex: search, $options: "i" } }
   ]
-})
-.populate("user")
-.skip(skip)
-      .limit(limit);
+};
+if (favorite === "true") {
+  filter.isFavorite = true;
+} else if (favorite === "false") {
+  filter.isFavorite = false;
+}
+    const total = await Note.countDocuments(filter);
+
+const totalPages = Math.ceil(total / limit);
+
+const notes = await Note.find(filter)
+  .skip(skip)
+  .limit(Number(limit));
 
 res.json({
   notes,
@@ -301,6 +311,55 @@ app.delete("/api/notes/:id", authMiddleware, async (req, res) => {
     });
   }
 });
+
+app.patch(
+  "/api/notes/:id/favorite",
+  authMiddleware,
+  async (req, res) => {
+    try {
+      const { isFavorite } = req.body;
+
+      // Check whether the input is a Boolean
+      if (typeof isFavorite !== "boolean") {
+        return res.status(400).json({
+          error: "isFavorite must be true or false"
+        });
+      }
+
+      // Update only the logged-in user's note
+      const note = await Note.findOneAndUpdate(
+        {
+          _id: req.params.id,
+          user: req.user.userId
+        },
+        { isFavorite },
+        {
+          new: true,
+          runValidators: true
+        }
+      );
+
+      if (!note) {
+        return res.status(404).json({
+          error: "Note not found"
+        });
+      }
+
+      res.status(200).json(note);
+
+    } catch (err) {
+      if (err.name === "CastError") {
+        return res.status(400).json({
+          error: "Invalid note ID"
+        });
+      }
+
+      res.status(500).json({
+        error: "Server error"
+      });
+    }
+  }
+);
 
 app.listen(3000, () => {
   console.log("Server running on port 3000");
