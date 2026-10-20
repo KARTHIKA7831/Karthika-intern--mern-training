@@ -13,6 +13,7 @@ function Dashboard() {
 const [totalPages, setTotalPages] = useState(1)
 const [favorite, setFavorite] = useState("all")
 
+
   useEffect(() => {
     const timer = setTimeout(() => {
     const token = localStorage.getItem("token")
@@ -177,31 +178,38 @@ const [favorite, setFavorite] = useState("all")
         </button>
       </form>
 
-      {loading && <p>Loading...</p>}
+      
 
-      {notes.map(note => (
-        <div key={note._id}>
-          <h2>{note.title}</h2>
-          <p>{note.body}</p>
-          <button onClick={() => handleFavorite(note)}>
-  {note.isFavorite ? "⭐ Favorited" : "☆ Add Favorite"}
-</button> 
+      {loading ? (
+  <p>Loading...</p>
+) : favorite === "true" && notes.length === 0 ? (
+  <p>No favorite notes found</p>
+) : (
+  notes.map(note => (
+    <div key={note._id}>
+      <h2>{note.title}</h2>
+      <p>{note.body}</p>
 
-          <button
-            onClick={() => {
-              setEditingId(note._id)
-              setTitle(note.title)
-              setBody(note.body)
-            }}
-          >
-            Edit
-          </button>
+      <button onClick={() => handleFavorite(note)}>
+        {note.isFavorite ? "⭐ Favorited" : "☆ Add Favorite"}
+      </button>
 
-          <button onClick={() => handleDelete(note._id)}>
-            Delete
-          </button>
-        </div>
-      ))}
+      <button
+        onClick={() => {
+          setEditingId(note._id);
+          setTitle(note.title);
+          setBody(note.body);
+        }}
+      >
+        Edit
+      </button>
+
+      <button onClick={() => handleDelete(note._id)}>
+        Delete
+      </button>
+    </div>
+  ))
+)}
 <div>
   <button onClick={() => setPage(page - 1)}
     disabled={page === 1}>
