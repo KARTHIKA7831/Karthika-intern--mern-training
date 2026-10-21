@@ -1,10 +1,12 @@
 import { useState } from "react"
 import { useNavigate } from "react-router-dom"
-
+import { useContext } from "react"
+import { AuthContext } from "../context/AuthContext.js"
 
 function Login() {
   const [email, setEmail] = useState("")
   const [password, setPassword] = useState("")
+  const { setIsLoggedIn } = useContext(AuthContext)
   const navigate = useNavigate()
 
   const handleSubmit = async (e) => {
@@ -35,6 +37,8 @@ function Login() {
       return
     }
     localStorage.setItem("token", data.token)
+
+    setIsLoggedIn(true)
 
 alert("Login successful!")
 
