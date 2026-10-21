@@ -1,9 +1,15 @@
 import { useState, useEffect } from "react"
 import api from "../api/axios"
 import { toast } from "react-toastify"
+import { useContext } from "react";
+import { AuthContext } from "../context/AuthContext.js";
 
 function Dashboard() {
-  const [notes, setNotes] = useState([])
+  const { isLoggedIn, setIsLoggedIn } = useContext(AuthContext);
+useEffect(() => {
+  console.log("Context login status:", isLoggedIn);
+}, [isLoggedIn]);
+const [notes, setNotes] = useState([])
   const [loading, setLoading] = useState(true)
   const [title, setTitle] = useState("")
   const [body, setBody] = useState("")
@@ -95,7 +101,10 @@ const [favorite, setFavorite] = useState("all")
   }
 
   const handleLogout = () => {
+    console.log("LOGOUT BUTTON CLICKED")
     localStorage.removeItem("token")
+    setIsLoggedIn(false)
+    console.log("Logout status updated");
     window.location.href = "/login"
   }
 
@@ -138,6 +147,7 @@ const [favorite, setFavorite] = useState("all")
   return (
     <div>
       <h1>My Notes</h1>
+      <p>Login status: {isLoggedIn ? "Logged In" : "Logged Out"}</p>
     <input
   type="text"
   placeholder="Search notes..."
