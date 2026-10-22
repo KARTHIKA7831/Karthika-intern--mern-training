@@ -8,12 +8,16 @@ const jwt = require("jsonwebtoken");
 const { body, validationResult } = require("express-validator");
 const User = require("./models/User");
 const authMiddleware = require("./middleware/auth");
+const upload = require("./middleware/upload");
+const fs = require("fs");
+const path = require("path");
 
 
 const app = express();
 
 app.use(express.json());
 app.use(cors());
+app.use("/uploads", express.static("uploads"));
 
 
 mongoose
@@ -36,6 +40,10 @@ const noteSchema = new mongoose.Schema({
     type: String,
     default: ""
   },
+  imageUrl: {
+  type: String,
+  default: ""
+},
   user: {
   type: mongoose.Schema.Types.ObjectId,
   ref: "User",
@@ -62,6 +70,73 @@ app.get("/hello", (req, res) => {
   res.json({ message: "Hello World" });
 });
 
+
+app.post(
+  "/api/notes/:id/image",
+  authMiddleware,
+  upload.single("image"),
+  async (req, res) => {
+    try {
+      if (!req.file) {
+        return res.status(400).json({
+          error: "Please upload an image"
+        });
+      }
+
+      // Find the note belonging to this user
+      const note = await Note.findOne({
+        _id: req.params.id,
+        user: req.user.userId
+      });
+
+      if (!note) {
+        // Remove newly uploaded file if note doesn't exist
+        fs.unlinkSync(req.file.path);
+
+        return res.status(404).json({
+          error: "Note not found"
+        });
+      }
+
+      // Save the old image URL
+      const oldImageUrl = note.imageUrl;
+
+      // Update the note with the new image URL
+      note.imageUrl = `/uploads/${req.file.filename}`;
+      await note.save();
+
+      // Delete the old image after successful update
+      if (oldImageUrl) {
+        const oldFilename = path.basename(oldImageUrl);
+        const oldImagePath = path.join(
+          __dirname,
+          "uploads",
+          oldFilename
+        );
+
+        if (
+          oldFilename &&
+          oldFilename !== req.file.filename &&
+          fs.existsSync(oldImagePath)
+        ) {
+          fs.unlinkSync(oldImagePath);
+        }
+      }
+
+      res.status(200).json({
+        message: "Image uploaded successfully",
+        imageUrl: note.imageUrl,
+        note
+      });
+    } catch (err) {
+      console.error(err);
+
+      res.status(500).json({
+        error: err.message
+      });
+    }
+  }
+);
 app.get("/api/notes", authMiddleware, async (req, res) => {
   try {
   const {
@@ -299,13 +374,13 @@ app.put(
   }
 );
 
+
 app.delete("/api/notes/:id", authMiddleware, async (req, res) => {
   try {
-    const note = await Note.findOneAndDelete({
-  _id: req.params.id,
-  user: req.user.userId
-});
-
+    const note = await Note.findOne({
+      _id: req.params.id,
+      user: req.user.userId
+    });
 
     if (!note) {
       return res.status(404).json({
@@ -313,11 +388,28 @@ app.delete("/api/notes/:id", authMiddleware, async (req, res) => {
       });
     }
 
+    // Delete the image file if the note has one
+    if (note.imageUrl) {
+      const filename = path.basename(note.imageUrl);
+      const imagePath = path.join(__dirname, "uploads", filename);
+
+      if (fs.existsSync(imagePath)) {
+        fs.unlinkSync(imagePath);
+      }
+    }
+
+    // Delete the note from MongoDB
+    await Note.findOneAndDelete({
+      _id: note._id,
+      user: req.user.userId
+    });
+
     res.status(204).send();
 
   } catch (err) {
-    res.status(400).json({
-      error: "Invalid note ID"
+    console.error(err);
+    res.status(500).json({
+      error: "Failed to delete note"
     });
   }
 });
