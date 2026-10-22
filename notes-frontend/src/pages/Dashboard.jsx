@@ -18,7 +18,43 @@ const [notes, setNotes] = useState([])
     const [search, setSearch] = useState("")
 const [totalPages, setTotalPages] = useState(1)
 const [favorite, setFavorite] = useState("all")
+const [selectedFile, setSelectedFile] = useState(null)
+const [selectedNoteId, setSelectedNoteId] = useState(null)
 
+const handleImageUpload = async () => {
+  if (!selectedFile || !selectedNoteId) {
+    alert("Please select an image for a note");
+    return;
+  }
+
+  const formData = new FormData();
+  formData.append("image", selectedFile);
+
+  try {
+    const response = await api.post(
+      `/notes/${selectedNoteId}/image`,
+      formData
+    );
+
+    console.log("Upload response:", response.data);
+
+    setNotes((prevNotes) =>
+      prevNotes.map((note) =>
+        note._id === selectedNoteId
+          ? response.data.note
+          : note
+      )
+    );
+
+    setSelectedFile(null);
+    setSelectedNoteId(null);
+
+    alert("Image uploaded successfully!");
+  } catch (error) {
+    console.log(error);
+    alert("Image upload failed");
+  }
+};
 
   useEffect(() => {
     const timer = setTimeout(() => {
@@ -57,48 +93,88 @@ const [favorite, setFavorite] = useState("all")
   return () => clearTimeout(timer)
   }, [page, search, favorite])
 
-  const handleSubmit = (e) => {
-    e.preventDefault()
+  
+const handleSubmit = (e) => {
+  e.preventDefault();
 
-    if (!title.trim() || !body.trim()) {
-      toast.error("Please enter both title and body")
-      return
-    }
+  if (!title.trim() || !body.trim()) {
+    toast.error("Please enter both title and body");
+    return;
+  }
 
-    if (editingId) {
-      api.put(`/notes/${editingId}`, {
-        title: title,
-        body: body
-      })
-        .then(response => {
-          const data = response.data
-
-          setNotes(
-            notes.map(note =>
-              note._id === data._id ? data : note
-            )
-          )
-
-          setTitle("")
-          setBody("")
-          setEditingId(null)
-        })
-
-      return
-    }
-
-    api.post("/notes", {
+  if (editingId) {
+    api.put(`/notes/${editingId}`, {
       title: title,
       body: body
     })
       .then(response => {
-        const data = response.data
+        const data = response.data;
 
-        setNotes([...notes, data])
-        setTitle("")
-        setBody("")
+        setNotes(prevNotes =>
+          prevNotes.map(note =>
+            note._id === data._id ? data : note
+          )
+        );
+
+        setTitle("");
+        setBody("");
+        setEditingId(null);
       })
+      .catch(error => {
+        console.log(error);
+        toast.error(
+          error.response?.data?.error || "Something went wrong"
+        );
+      });
+
+    return;
   }
+
+  // Create a new note
+  api.post("/notes", {
+    title: title,
+    body: body
+  })
+    .then(response => {
+      const data = response.data;
+
+      // If no image is selected, add the note directly
+      if (!selectedFile) {
+        setNotes(prevNotes => [...prevNotes, data]);
+        setTitle("");
+        setBody("");
+        toast.success("Note created successfully!");
+        return;
+      }
+
+      // Upload the selected image
+      const formData = new FormData();
+      formData.append("image", selectedFile);
+
+      return api.post(
+        `/notes/${data._id}/image`,
+        formData
+      )
+        .then(imageResponse => {
+          const updatedNote = imageResponse.data.note;
+
+          setNotes(prevNotes => [...prevNotes, updatedNote]);
+
+          setTitle("");
+          setBody("");
+          setSelectedFile(null);
+          setSelectedNoteId(null);
+
+          toast.success("Note created successfully!");
+        });
+    })
+    .catch(error => {
+      console.log(error);
+      toast.error(
+        error.response?.data?.error || "Something went wrong"
+      );
+    });
+};
 
   const handleLogout = () => {
     console.log("LOGOUT BUTTON CLICKED")
@@ -147,8 +223,8 @@ const [favorite, setFavorite] = useState("all")
   return (
     <div>
       <h1>My Notes</h1>
-      <p>Login status: {isLoggedIn ? "Logged In" : "Logged Out"}</p>
-    <input
+      
+      <input
   type="text"
   placeholder="Search notes..."
   value={search}
@@ -183,6 +259,12 @@ const [favorite, setFavorite] = useState("all")
           onChange={(e) => setBody(e.target.value)}
         />
 
+        <input
+  type="file"
+  accept="image/*"
+  onChange={(e) => setSelectedFile(e.target.files[0])}
+/>
+
         <button type="submit">
           {editingId ? "Update Note" : "Add Note"}
         </button>
@@ -199,6 +281,35 @@ const [favorite, setFavorite] = useState("all")
     <div key={note._id}>
       <h2>{note.title}</h2>
       <p>{note.body}</p>
+      {note.imageUrl && (
+  <img
+    src={`http://localhost:3000${note.imageUrl}`}
+    alt={note.title}
+    width="200"
+  />
+)}
+      <input
+  type="file"
+  accept="image/*"
+  onChange={(e) => {
+    setSelectedFile(e.target.files[0])
+    setSelectedNoteId(note._id)
+  }}
+/>{selectedNoteId === note._id && selectedFile && (
+  <div>
+    <p>Image Preview:</p>
+
+    <img
+      src={URL.createObjectURL(selectedFile)}
+      alt="Selected preview"
+      width="200"
+    />
+
+    <button onClick={handleImageUpload}>
+      Upload Image
+    </button>
+  </div>
+)}
 
       <button onClick={() => handleFavorite(note)}>
         {note.isFavorite ? "⭐ Favorited" : "☆ Add Favorite"}
@@ -209,12 +320,19 @@ const [favorite, setFavorite] = useState("all")
           setEditingId(note._id);
           setTitle(note.title);
           setBody(note.body);
+          {note.imageUrl && (
+  <img
+    src={`http://localhost:3000${note.imageUrl}`}
+    alt={note.title}
+    width="200"
+  />
+)}
         }}
       >
         Edit
       </button>
-
-      <button onClick={() => handleDelete(note._id)}>
+      
+<button onClick={() => handleDelete(note._id)}>
         Delete
       </button>
     </div>
