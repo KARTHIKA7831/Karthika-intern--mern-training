@@ -1,30 +1,21 @@
-import { useState } from "react"
 import { useNavigate } from "react-router-dom"
+import { useForm } from "react-hook-form"
 
 function Signup() {
     const navigate = useNavigate()
-  const [name, setName] = useState("")
-  const [email, setEmail] = useState("")
-  const [password, setPassword] = useState("")
-
-  const handleSubmit = async (e) => {
-  e.preventDefault()
-
-  if (!name || !email || !password) {
-    alert("Please fill all fields")
-    return
-  }
-
-  const response = await fetch("http://localhost:3000/api/auth/signup", {
+    const {
+  register,
+  handleSubmit: handleFormSubmit,
+  formState: { errors }
+} = useForm()
+  
+const handleSubmit = async (formData) => {
+ const response = await fetch("http://localhost:3000/api/auth/signup", {
     method: "POST",
     headers: {
       "Content-Type": "application/json"
     },
-    body: JSON.stringify({
-      name,
-      email,
-      password
-    })
+    body: JSON.stringify(formData)
   })
 
   const data = await response.json()
@@ -38,44 +29,49 @@ function Signup() {
 
   alert("Signup successful!")
   navigate("/login")
-  setName("")
-  setEmail("")
-  setPassword("")
+  
 }
 
   return (
     <div>
       <h1>Signup</h1>
 
-      <form onSubmit={handleSubmit}>
+      <form onSubmit={handleFormSubmit(handleSubmit)}>
         <div>
           <label>Name</label>
           <input
-            type="text"
-            value={name}
-            onChange={(e) => setName(e.target.value)}
-            placeholder="Enter name"
-          />
+  type="text"
+  placeholder="Enter name"
+  {...register("name", {
+  required: "Name is required"
+})}
+/>
+{errors.name && <p>{errors.name.message}</p>}
         </div>
 
         <div>
           <label>Email</label>
           <input
-            type="email"
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
-            placeholder="Enter email"
-          />
+  type="email"
+  placeholder="Enter email"
+  {...register("email", {
+    required: "Email is required"
+  })}
+/>
+{errors.email && <p>{errors.email.message}</p>}
         </div>
 
         <div>
           <label>Password</label>
-          <input
-            type="password"
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-            placeholder="Enter password"
-          />
+          
+<input
+  type="password"
+  placeholder="Enter password"
+  {...register("password", {
+    required: "Password is required",
+  })}
+/>
+{errors.password && <p>{errors.password.message}</p>}
         </div>
 
         <button type="submit">Signup</button>

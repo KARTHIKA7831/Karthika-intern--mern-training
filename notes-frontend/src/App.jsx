@@ -5,6 +5,7 @@ import Dashboard from "./pages/Dashboard"
 import ProtectedRoute from "./components/ProtectedRoute"
 import { AuthProvider } from "./context/AuthContext.jsx";
 
+
 function App() {
   return (
      <AuthProvider>
