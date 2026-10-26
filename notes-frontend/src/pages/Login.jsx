@@ -1,21 +1,38 @@
-import { useState } from "react"
+import { useForm } from "react-hook-form"
+import { z } from "zod"
+import { zodResolver } from "@hookform/resolvers/zod"
 import { useNavigate } from "react-router-dom"
 import { useContext } from "react"
 import { AuthContext } from "../context/AuthContext.js"
 
+const loginSchema = z.object({
+  email: z
+    .string()
+    .min(1, "Email is required")
+    .check(z.email({ message: "Enter a valid email address" })),
+
+  password: z
+    .string()
+    .min(1, "Password is required")
+})
+
 function Login() {
-  const [email, setEmail] = useState("")
-  const [password, setPassword] = useState("")
+  const {
+  register,
+  handleSubmit,
+  formState: { errors }
+} = useForm({
+  resolver: zodResolver(loginSchema),
+  defaultValues: {
+    email: "",
+    password: ""
+  }
+})
   const { setIsLoggedIn } = useContext(AuthContext)
   const navigate = useNavigate()
 
-  const handleSubmit = async (e) => {
-    e.preventDefault()
-
-    if (!email || !password) {
-      alert("Please enter email and password")
-      return
-    }
+  const onSubmit = async ({ email, password }) => {
+    
 
     const response = await fetch("http://localhost:3000/api/auth/login", {
       method: "POST",
@@ -49,25 +66,27 @@ navigate("/dashboard")
     <div>
       <h1>Login</h1>
 
-      <form onSubmit={handleSubmit}>
+      <form onSubmit={handleSubmit(onSubmit)}>
         <div>
           <label>Email</label>
           <input
             type="email"
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
+            {...register("email")}
             placeholder="Enter email"
           />
+          {errors.email && <p role="alert">{errors.email.message}</p>}
         </div>
 
         <div>
           <label>Password</label>
           <input
             type="password"
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
+            {...register("password")}
             placeholder="Enter password"
           />
+          {errors.password && (
+  <p role="alert">{errors.password.message}</p>
+)}
         </div>
 
         <button type="submit">Login</button>
