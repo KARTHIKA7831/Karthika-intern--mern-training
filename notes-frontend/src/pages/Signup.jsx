@@ -1,5 +1,13 @@
 import { useNavigate } from "react-router-dom"
 import { useForm } from "react-hook-form"
+import { z } from "zod"
+import { zodResolver } from "@hookform/resolvers/zod"
+
+const signupSchema = z.object({
+  name: z.string().min(1, "Name is required"),
+  email: z.string().check(z.email({ message: "Enter a valid email address" })),
+  password: z.string().min(8, "Password must be at least 8 characters"),
+})
 
 function Signup() {
     const navigate = useNavigate()
@@ -7,7 +15,10 @@ function Signup() {
   register,
   handleSubmit: handleFormSubmit,
   formState: { errors }
-} = useForm()
+} = useForm({
+  resolver: zodResolver(signupSchema)
+})
+
   
 const handleSubmit = async (formData) => {
  const response = await fetch("http://localhost:3000/api/auth/signup", {
@@ -42,9 +53,7 @@ const handleSubmit = async (formData) => {
           <input
   type="text"
   placeholder="Enter name"
-  {...register("name", {
-  required: "Name is required"
-})}
+  {...register("name")}
 />
 {errors.name && <p>{errors.name.message}</p>}
         </div>
@@ -54,9 +63,7 @@ const handleSubmit = async (formData) => {
           <input
   type="email"
   placeholder="Enter email"
-  {...register("email", {
-    required: "Email is required"
-  })}
+  {...register("email")}
 />
 {errors.email && <p>{errors.email.message}</p>}
         </div>
@@ -67,9 +74,7 @@ const handleSubmit = async (formData) => {
 <input
   type="password"
   placeholder="Enter password"
-  {...register("password", {
-    required: "Password is required",
-  })}
+  {...register("password")}
 />
 {errors.password && <p>{errors.password.message}</p>}
         </div>

@@ -353,7 +353,7 @@ app.put(
   },
         { title, body },
         {
-          new: true,
+          returnDocument: "after",
           runValidators: true
         }
       );
@@ -436,7 +436,7 @@ app.patch(
         },
         { isFavorite },
         {
-          new: true,
+          returnDocument: "after" ,
           runValidators: true
         }
       );

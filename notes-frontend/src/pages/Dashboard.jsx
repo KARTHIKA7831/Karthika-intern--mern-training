@@ -1,18 +1,41 @@
-import { useState, useEffect } from "react"
+import { useState, useEffect } from "react";
+import { useForm } from "react-hook-form";
+import { z } from "zod";
+import { zodResolver } from "@hookform/resolvers/zod";
 import api from "../api/axios"
 import { toast } from "react-toastify"
 import { useContext } from "react";
 import { AuthContext } from "../context/AuthContext.js";
 
+const noteSchema = z.object({
+  title: z.string().trim().min(1, "Title is required"),
+  body: z.string().trim().min(1, "Body is required"),
+});
+
 function Dashboard() {
   const { isLoggedIn, setIsLoggedIn } = useContext(AuthContext);
+
+  const {
+    register,
+    handleSubmit: handleFormSubmit,
+    setValue,
+    reset,
+    formState: { errors },
+  } = useForm({
+    resolver: zodResolver(noteSchema),
+    defaultValues: {
+      title: "",
+      body: "",
+    },
+  });
 useEffect(() => {
   console.log("Context login status:", isLoggedIn);
 }, [isLoggedIn]);
 const [notes, setNotes] = useState([])
   const [loading, setLoading] = useState(true)
-  const [title, setTitle] = useState("")
-  const [body, setBody] = useState("")
+  const [error, setError] = useState("")
+  
+  
   const [editingId, setEditingId] = useState(null)
     const [page, setPage] = useState(1)
     const [search, setSearch] = useState("")
@@ -57,7 +80,9 @@ const handleImageUpload = async () => {
 };
 
   useEffect(() => {
+    
     const timer = setTimeout(() => {
+    
     const token = localStorage.getItem("token")
 
     console.log("TOKEN:", token)
@@ -86,6 +111,7 @@ const handleImageUpload = async () => {
       })
       .catch(error => {
         console.log(error)
+        setError("Failed to load notes. Please try again.")
         setLoading(false)
       })
       }, 500)
@@ -94,13 +120,8 @@ const handleImageUpload = async () => {
   }, [page, search, favorite])
 
   
-const handleSubmit = (e) => {
-  e.preventDefault();
-
-  if (!title.trim() || !body.trim()) {
-    toast.error("Please enter both title and body");
-    return;
-  }
+const handleSubmit = (data) => {
+  const { title, body } = data;
 
   if (editingId) {
     api.put(`/notes/${editingId}`, {
@@ -116,8 +137,7 @@ const handleSubmit = (e) => {
           )
         );
 
-        setTitle("");
-        setBody("");
+        reset();
         setEditingId(null);
       })
       .catch(error => {
@@ -141,8 +161,7 @@ const handleSubmit = (e) => {
       // If no image is selected, add the note directly
       if (!selectedFile) {
         setNotes(prevNotes => [...prevNotes, data]);
-        setTitle("");
-        setBody("");
+        reset()
         toast.success("Note created successfully!");
         return;
       }
@@ -160,8 +179,7 @@ const handleSubmit = (e) => {
 
           setNotes(prevNotes => [...prevNotes, updatedNote]);
 
-          setTitle("");
-          setBody("");
+          reset()
           setSelectedFile(null);
           setSelectedNoteId(null);
 
@@ -185,18 +203,26 @@ const handleSubmit = (e) => {
   }
 
   const handleDelete = (id) => {
-    const confirmed = window.confirm(
-      "Are you sure you want to delete this note?"
-    )
+  const confirmed = window.confirm(
+    "Are you sure you want to delete this note?"
+  )
 
-    if (!confirmed) return
+  if (!confirmed) return
 
-    api.delete(`/notes/${id}`)
-      .then(() => {
-        setNotes(notes.filter(note => note._id !== id))
-      })
-  }
+  api.delete(`/notes/${id}`)
+    .then(() => {
+     setNotes(notes.filter(note => note._id !== id))
+      toast.success("Note deleted successfully!")
+    })
+    .catch(error => {
+      console.log(error)
 
+      toast.error(
+        error.response?.data?.error ||
+        "Failed to delete note. Please try again."
+      )
+    })
+}
   const handleFavorite = (note) => {
   api.patch(`/notes/${note._id}/favorite`, {
     isFavorite: !note.isFavorite
@@ -229,6 +255,8 @@ const handleSubmit = (e) => {
   placeholder="Search notes..."
   value={search}
   onChange={(e) => {
+    setLoading(true)
+  setError("")
     setSearch(e.target.value)
     setPage(1)
   }}
@@ -245,19 +273,25 @@ const handleSubmit = (e) => {
   <option value="false">Not Favorites</option>
 </select>
 
-      <form onSubmit={handleSubmit}>
-        <input
-          type="text"
-          placeholder="Title"
-          value={title}
-          onChange={(e) => setTitle(e.target.value)}
-        />
+      <form onSubmit={handleFormSubmit(handleSubmit)}>
+  <input
+    type="text"
+    placeholder="Title"
+    {...register("title")}
+  />
 
-        <textarea
-          placeholder="Body"
-          value={body}
-          onChange={(e) => setBody(e.target.value)}
-        />
+  {errors.title && (
+    <p role="alert">{errors.title.message}</p>
+  )}
+
+  <textarea
+    placeholder="Body"
+    {...register("body")}
+  />
+
+  {errors.body && (
+    <p role="alert">{errors.body.message}</p>
+  )}
 
         <input
   type="file"
@@ -274,8 +308,18 @@ const handleSubmit = (e) => {
 
       {loading ? (
   <p>Loading...</p>
-) : favorite === "true" && notes.length === 0 ? (
-  <p>No favorite notes found</p>
+) : error ? (
+  <p role="alert">{error}</p>
+) : notes.length === 0 ? (
+  <p>
+    {search.trim()
+      ? "No notes match your search."
+      : favorite === "true"
+      ? "No favorite notes found."
+      : favorite === "false"
+      ? "No non-favorite notes found."
+      : "No notes yet. Create your first note!"}
+  </p>
 ) : (
   notes.map(note => (
     <div key={note._id}>
@@ -318,8 +362,8 @@ const handleSubmit = (e) => {
       <button
         onClick={() => {
           setEditingId(note._id);
-          setTitle(note.title);
-          setBody(note.body);
+         setValue("title", note.title);
+          setValue("body", note.body);
           {note.imageUrl && (
   <img
     src={`http://localhost:3000${note.imageUrl}`}
