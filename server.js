@@ -190,6 +190,34 @@ res.json({
   }
 });
 
+
+app.get("/api/notes/stats", authMiddleware, async (req, res) => {
+  try {
+    const userId = req.user.userId;
+
+    const totalNotes = await Note.countDocuments({
+      user: userId
+    });
+
+    const favoriteNotes = await Note.countDocuments({
+      user: userId,
+      isFavorite: true
+    });
+
+    res.status(200).json({
+      totalNotes,
+      favoriteNotes
+    });
+  } catch (err) {
+    console.error("Stats error:", err);
+
+    res.status(500).json({
+      error: "Failed to fetch note stats"
+    });
+  }
+});
+
+
 app.post(
   "/api/auth/signup",
 
