@@ -31,7 +31,14 @@ function Dashboard() {
 useEffect(() => {
   console.log("Context login status:", isLoggedIn);
 }, [isLoggedIn]);
+
+
+
 const [notes, setNotes] = useState([])
+const [stats, setStats] = useState({
+  totalNotes: 0,
+  favoriteNotes: 0,
+});
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState("")
   
@@ -43,6 +50,22 @@ const [totalPages, setTotalPages] = useState(1)
 const [favorite, setFavorite] = useState("all")
 const [selectedFile, setSelectedFile] = useState(null)
 const [selectedNoteId, setSelectedNoteId] = useState(null)
+
+const fetchStats = async () => {
+  try {
+    const response = await api.get("/notes/stats");
+    setStats(response.data);
+  } catch (error) {
+    console.log("Stats fetch error:", error);
+  }
+};
+
+useEffect(() => {
+  async function loadStats() {
+    await fetchStats();
+  }
+  loadStats();
+}, []);
 
 const handleImageUpload = async () => {
   if (!selectedFile || !selectedNoteId) {
@@ -163,6 +186,7 @@ const handleSubmit = (data) => {
         setNotes(prevNotes => [...prevNotes, data]);
         reset()
         toast.success("Note created successfully!");
+        fetchStats();
         return;
       }
 
@@ -184,6 +208,7 @@ const handleSubmit = (data) => {
           setSelectedNoteId(null);
 
           toast.success("Note created successfully!");
+          fetchStats();
         });
     })
     .catch(error => {
@@ -213,6 +238,7 @@ const handleSubmit = (data) => {
     .then(() => {
      setNotes(notes.filter(note => note._id !== id))
       toast.success("Note deleted successfully!")
+      fetchStats();
     })
     .catch(error => {
       console.log(error)
@@ -239,6 +265,7 @@ const handleSubmit = (data) => {
       );
 
       toast.success("Favorite updated");
+      fetchStats();
     })
     .catch(error => {
       console.log(error);
@@ -249,6 +276,18 @@ const handleSubmit = (data) => {
   return (
     <div>
       <h1>My Notes</h1>
+
+      <div className="stats-container">
+  <div className="stats-card">
+    <h3>Total Notes</h3>
+    <p>{stats.totalNotes}</p>
+  </div>
+
+  <div className="stats-card">
+    <h3>Favorite Notes</h3>
+    <p>{stats.favoriteNotes}</p>
+  </div>
+</div>
       
       <input
   type="text"
